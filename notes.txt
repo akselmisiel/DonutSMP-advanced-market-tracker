@@ -1,0 +1,35 @@
+
+add enchanted book enchants
+
+should be a minimum price input when tracking an item
+
+add analisys tools
+
+make te price tracker data deletable too?
+
+add money made on /sell info
+
+right click and drag to zoom in
+
+show listings of sellers 
+
+tracker should only save the items that are tracked by the user at that moment to the json. not all items.?
+
+
+make this app with axios
+
+
+now it is time to change the price tracking to market cap tracking. do this by first completely removing active listing functionality from the app. we dont need it. the market cap tracking i want should be done like this: first the tab is opened by entering a min and max price, the tracking tab looks the same as before, there is a graph on the top and there is a list below it but this time the list shows the items sold in that price range but not every transaction seperate. if the items are COMPLETELY the same even from different sellers (meaning same stack size, same enchant, same shulker box and contents if its a shulker)  then show the item in the list and show how many sold in that time window like [item - stack size - enchants - contents (classic shulker viewing like listings) - x amount sold] (there should be a time window too). the different itrems in that price range should be sorted by their market cap meaning how many sold. it should show all the sellers if clicked on the sellers button next to an item in the list. the graph on top of the list should be empty until clicked on the "show graph" button next to in item in the list. then the graph shows those items graph in the normal way. 
+
+
+
+
+
+
+
+
+
+
+there is an issue with the api where any colored shulker boxes content doesnt come in the response so it always shows empty. i want you to add a red texted warning where the contents of a colored shulker should be that says smthng like due to an api issue the contents couldnt be shown etc. i want this everywhere where there is contents of a shulker in the app. and dont show active lisdtings in shulker or item tracking
+
+now we should add the ability to track a shulker full of item. we can do this by adding a checkbox to add item part and if shulker is selected it should only track that item full of shulker by multiplying the max stack size of the item with 27. the max stack size can change so we should get that from the user with an input if shulker checkbox is selected. and there is an issue with the api where any colored shulker boxes content doesnt come in the response so it always shows empty. i want you to add a red texted warning where the contents of a colored shulker should be that says smthng like due to an api issue the contents couldnt be shown etc. i want this everywhere where there is contents of a shulker in the app. and dont show active lisdtings in shulker or item tracking

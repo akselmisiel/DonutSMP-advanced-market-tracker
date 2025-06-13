@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DonutSMP Advanced Market Tracker</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+    <style>
+      :root {
+        --main-blue: #3498db;
+        --dark-blue: #2980b9;
+        --light-gray: #ecf0f1;
+        --white: #fff;
+        --text-dark: #2c3e50;
+        --red: #e74c3c;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        background-color: #f4f7f9;
+        color: #333;
+        margin: 0;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1400px;
+        margin: auto;
+        background: var(--white);
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1,
+      h2,
+      h3 {
+        color: var(--text-dark);
+      }
+      h2 {
+        border-bottom: 2px solid var(--main-blue);
+        padding-bottom: 10px;
+      }
+      .grid-container {
+        display: grid;
+        grid-template-columns: 400px 1fr;
+        gap: 20px;
+      }
+      .controls,
+      .results {
+        padding: 15px;
+        border-radius: 5px;
+        background: var(--light-gray);
+      }
+      .input-group {
+        margin-bottom: 15px;
+      }
+      .input-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      button {
+        background-color: var(--main-blue);
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      button:hover {
+        background-color: var(--dark-blue);
+      }
+      button.stop-btn {
+        background-color: var(--red);
+      }
+      .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .remove-btn {
+        background: var(--red);
+        color: white;
+        border: none;
+        padding: 3px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 10px;
+        margin-left: 10px;
+      }
+      #status {
+        margin-top: 15px;
+        font-style: italic;
+        color: #7f8c8d;
+        min-height: 20px;
+      }
+
+      .tab-nav {
+        display: flex;
+        flex-wrap: wrap;
+        border-bottom: 2px solid #ccc;
+        margin-bottom: 15px;
+      }
+      .tab-btn {
+        background-color: #ddd;
+        color: #333;
+        border-radius: 5px 5px 0 0;
+        border: 1px solid #ccc;
+        border-bottom: none;
+        padding: 10px 15px;
+        margin-right: 5px;
+        cursor: pointer;
+      }
+      .tab-btn.active {
+        background-color: var(--main-blue);
+        color: white;
+        border-color: var(--main-blue);
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+
+      .chart-container {
+        position: relative;
+        height: 60vh; /* Default height for item chart */
+        width: 100%;
+      }
+
+      /* Styles for the price chart and its custom legend */
+      .price-chart-layout {
+        display: flex;
+        flex-direction: row; /* Align chart and legend side-by-side */
+        gap: 20px;
+      }
+      .price-chart-container {
+        flex-grow: 1; /* Chart takes available space */
+        height: 45vh; /* Adjusted height for price chart */
+      }
+      .custom-price-legend {
+        flex-basis: 250px; /* Fixed width for the legend */
+        flex-shrink: 0;
+        max-height: 45vh; /* Match chart height */
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+        background-color: #f9f9f9;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+        font-size: 0.9em;
+      }
+      .legend-color-box {
+        width: 15px;
+        height: 15px;
+        margin-right: 8px;
+        border: 1px solid #777;
+      }
+      .legend-item.hidden {
+        text-decoration: line-through;
+        color: #aaa; /* Lighter color for hidden items */
+      }
+      .legend-color-box.hidden {
+        background-color: #ccc !important; /* Grey out color box when hidden */
+        border-color: #bbb;
+      }
+      #price-results-list,
+      #market-cap-results-list {
+        list-style-type: decimal;
+        padding-left: 20px;
+        max-height: 55vh;
+        overflow-y: auto;
+      }
+      .market-cap-item {
+        margin-bottom: 15px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+      }
+      .market-cap-buttons {
+        margin-top: 8px;
+        gap: 10px;
+        display: flex;
+      }
+      .market-cap-buttons button {
+        padding: 5px 10px;
+        font-size: 0.8em;
+      }
+      .enchantment-text {
+        color: #8e44ad;
+        font-style: italic;
+        font-size: 0.9em;
+      }
+      .shulker-link {
+        cursor: pointer;
+        color: var(--main-blue);
+        text-decoration: underline;
+      }
+
+      /* Modal Styles */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+      .modal-content {
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 600px;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="details-modal" class="modal" onclick="closeModal()">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <span
+          class="close-btn"
+          onclick="closeModal()"
+          style="cursor: pointer; float: right; font-size: 28px"
+          >&times;</span
+        >
+        <div id="modal-body"></div>
+      </div>
+    </div>
+
+    <div class="container">
+      <h1>DonutSMP Advanced Market Tracker</h1>
+      <div class="grid-container">
+        <div class="controls">
+          <h2>Configuration</h2>
+          <div class="input-group">
+            <label for="api-token">API Token</label>
+            <input
+              type="text"
+              id="api-token"
+              placeholder="Enter your DonutSMP API token"
+            />
+          </div>
+          <div class="action-buttons">
+            <button onclick="startPolling()">Start Live Tracking</button>
+            <button class="stop-btn" onclick="stopPolling()">Stop</button>
+            <button onclick="resetActiveChartZoom()">Reset Zoom</button>
+          </div>
+          <div id="status">Idle. Keep backend running.</div>
+          <hr />
+          <h3>Track Item History</h3>
+          <div class="input-group">
+            <label for="display-name">Display Name (e.g., Elytras)</label>
+            <input
+              type="text"
+              id="display-name"
+              placeholder="Custom name for chart"
+            />
+            <label for="item-id">Item ID (e.g., minecraft:elytra)</label>
+            <input type="text" id="item-id" placeholder="minecraft:elytra" />
+            <button onclick="addItem()">Add Item Tracker</button>
+          </div>
+          <div class="input-group">
+            <input type="checkbox" id="shulker-checkbox" />
+            <label for="shulker-checkbox">Track Full Shulker Boxes</label>
+          </div>
+          <div id="shulker-options" style="display: none; margin-top: 10px">
+            <div class="input-group">
+              <label for="item-stack-size">Max Stack Size in Shulker</label>
+              <input
+                type="number"
+                id="item-stack-size"
+                placeholder="e.g., 64"
+                min="1"
+                value="64"
+              />
+            </div>
+          </div>
+          <hr />
+          <h3>Track High-Value Items (Legacy)</h3>
+          <div class="input-group">
+            <label for="price-threshold">Price > (e.g., 10000000)</label>
+            <input type="number" id="price-threshold" placeholder="10000000" />
+            <button onclick="addPriceTracker()">Add Price Tracker</button>
+          </div>
+          <hr />
+          <h3>Market Cap Tracking</h3>
+          <div class="input-group">
+            <label for="display-name-market"
+              >Display Name (e.g., High Value Market)</label
+            >
+            <input
+              type="text"
+              id="display-name-market"
+              placeholder="Market Tracker Name"
+            />
+            <label for="min-price">Min Price (e.g., 1000000)</label>
+            <input type="number" id="min-price" placeholder="1000000" />
+            <label for="max-price">Max Price (e.g., 50000000)</label>
+            <input type="number" id="max-price" placeholder="50000000" />
+            <button onclick="addMarketCapTracker()">
+              Add Market Cap Tracker
+            </button>
+          </div>
+          <hr />
+          <h3>Market Cap Blacklist</h3>
+          <div class="input-group">
+            <label for="blacklist-id">Item ID to Blacklist</label>
+            <input type="text" id="blacklist-id" placeholder="minecraft:dirt" />
+            <button onclick="addBlacklistItem()">Blacklist</button>
+            <ul id="blacklist-items"></ul>
+          </div>
+        </div>
+        <div class="results">
+          <h2>Market Analysis</h2>
+          <div id="tab-nav" class="tab-nav"></div>
+
+          <div id="chart-content" class="tab-content">
+            <div
+              style="
+                margin-bottom: 10px;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+              "
+            >
+              <label for="time-window">Time Window:</label>
+              <select id="time-window" onchange="renderActiveTabContent()">
+                <option value="all">All Time</option>
+                <option value="1h">Last 1 Hour</option>
+                <option value="6h">Last 6 Hours</option>
+                <option value="1d">Last 1 Day</option>
+                <option value="1w">Last 1 Week</option>
+                <option value="custom">Custom</option>
+              </select>
+              <div id="custom-time-inputs" style="display: none; gap: 5px">
+                <input
+                  type="number"
+                  id="custom-value"
+                  placeholder="Value"
+                  min="1"
+                  style="width: 60px"
+                />
+                <select id="custom-unit" style="width: 80px">
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                  <option value="days" selected>Days</option>
+                </select>
+                <span>ago</span>
+              </div>
+              <button
+                onclick="showStatsForActiveChart()"
+                style="margin-left: auto"
+              >
+                Stats
+              </button>
+            </div>
+            <div class="chart-container">
+              <canvas id="market-chart"></canvas>
+            </div>
+          </div>
+
+          <div id="price-content" class="tab-content">
+            <h3>Historical Sales</h3>
+            <div class="price-chart-layout">
+              <div class="price-chart-container">
+                <canvas id="price-scatter-chart"></canvas>
+              </div>
+              <div id="custom-price-legend" class="custom-price-legend"></div>
+            </div>
+            <h3>Active Listings</h3>
+            <ul id="price-results-list"></ul>
+          </div>
+
+          <div id="market-cap-content" class="tab-content">
+            <div
+              style="
+                margin-bottom: 10px;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+              "
+            >
+              <label for="market-time-window">Time Window:</label>
+              <select
+                id="market-time-window"
+                onchange="renderActiveTabContent()"
+              >
+                <option value="all">All Time</option>
+                <option value="1h">Last 1 Hour</option>
+                <option value="6h">Last 6 Hours</option>
+                <option value="1d">Last 1 Day</option>
+                <option value="1w">Last 1 Week</option>
+                <option value="custom">Custom</option>
+              </select>
+              <div
+                id="market-custom-time-inputs"
+                style="display: none; gap: 5px"
+              >
+                <input
+                  type="number"
+                  id="market-custom-value"
+                  placeholder="Value"
+                  min="1"
+                  style="width: 60px"
+                />
+                <select id="market-custom-unit" style="width: 80px">
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                  <option value="days" selected>Days</option>
+                </select>
+                <span>ago</span>
+              </div>
+              <button
+                onclick="showStatsForActiveChart()"
+                style="margin-left: auto"
+              >
+                Stats
+              </button>
+            </div>
+            <h3>Market Cap Analysis</h3>
+            <div
+              id="market-cap-range-display"
+              style="margin-bottom: 10px; font-weight: bold; color: #2c3e50"
+            ></div>
+            <div class="price-chart-layout">
+              <div class="price-chart-container">
+                <canvas id="market-cap-chart"></canvas>
+              </div>
+              <div id="custom-market-legend" class="custom-price-legend"></div>
+            </div>
+            <h3>Items by Market Cap</h3>
+            <ul id="market-cap-results-list"></ul>
+          </div>
+          <div id="placeholder-content" class="tab-content active">
+            <h3>Welcome!</h3>
+            <p>
+              Add an item tracker or market cap tracker, then start live
+              tracking.
+            </p>
+            <p>Use your mouse wheel to zoom and drag to pan the charts.</p>
+            <p>
+              <strong>Note:</strong> Active listings functionality has been
+              removed in favor of market cap tracking.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- Global State ---
+      let historicalData = [],
+        trackedItems = [],
+        blacklist = [];
+      let knownTxKeys = new Set();
+      let pollingInterval,
+        itemChart,
+        priceChart,
+        marketCapChart,
+        activeTabKey = null;
+      let itemColors = {}; // ADDED: To store persistent colors for price chart items
+      let priceChartLegendVisibility = {}; // ADDED: To store visibility state of price chart legend items
+      let marketCapLegendVisibility = {}; // ADDED: To store visibility state of market cap chart legend items      // --- API & App Config ---
+      const API_BASE = ""; // Use relative URLs for production
+      const POLLING_RATE = 30000;
+      const MAX_PAGES_TO_FETCH_LIVE = 10; // ADDED: MAX_PAGES_TO_FETCH_LIVE for fetching new data from DonutSMP API
+
+      // --- Initialization ---
+      document.addEventListener("DOMContentLoaded", () => {
+        initCharts();
+        loadState(); // Load state, including legend visibility
+        loadInitialData();
+        renderTabsAndContent();
+
+        // ADDED: Event listener for the shulker checkbox
+        const shulkerCheckbox = document.getElementById("shulker-checkbox");
+        const shulkerOptionsDiv = document.getElementById("shulker-options");
+        if (shulkerCheckbox && shulkerOptionsDiv) {
+          shulkerCheckbox.addEventListener("change", function () {
+            shulkerOptionsDiv.style.display = this.checked ? "block" : "none";
+          });
+        } else {
+          console.warn(
+            "Shulker checkbox or options div not found. Ensure HTML is correct."
+          );
+        } // ADDED: Event listener for custom time window
+        const timeWindowSelect = document.getElementById("time-window");
+        const customTimeInputs = document.getElementById("custom-time-inputs");
+        if (timeWindowSelect && customTimeInputs) {
+          timeWindowSelect.addEventListener("change", function () {
+            customTimeInputs.style.display =
+              this.value === "custom" ? "flex" : "none";
+          });
+        }
+
+        // ADDED: Event listeners for market cap time window
+        const marketTimeWindowSelect =
+          document.getElementById("market-time-window");
+        const marketCustomTimeInputs = document.getElementById(
+          "market-custom-time-inputs"
+        );
+        if (marketTimeWindowSelect && marketCustomTimeInputs) {
+          marketTimeWindowSelect.addEventListener("change", function () {
+            marketCustomTimeInputs.style.display =
+              this.value === "custom" ? "flex" : "none";
+          });
+        }
+      });
+
+      async function loadInitialData() {
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = "Loading historical data from server...";
+        try {
+          const response = await fetch(`${API_BASE}/history`);
+          if (!response.ok) {
+            throw new Error(
+              `Failed to fetch history: ${response.status} ${response.statusText}`
+            );
+          }
+          const data = await response.json();
+
+          if (Array.isArray(data)) {
+            historicalData = data;
+            // Ensure historicalData is sorted, as backend already sorts but good to be defensive
+            historicalData.sort(
+              (a, b) => a.unixMillisDateSold - b.unixMillisDateSold
+            );
+
+            knownTxKeys.clear();
+            historicalData.forEach((tx) => {
+              // Basic validation for transaction structure before creating a key
+              if (
+                tx &&
+                tx.unixMillisDateSold !== undefined &&
+                tx.price !== undefined &&
+                tx.item &&
+                tx.item.id
+              ) {
+                knownTxKeys.add(createTxKey(tx));
+              } else {
+                console.warn(
+                  "Skipping invalid transaction object when populating knownTxKeys:",
+                  tx
+                );
+              }
+            });
+            statusEl.textContent = `Loaded ${historicalData.length} records from history. Ready.`;
+          } else {
+            console.error(
+              "Received non-array data for historical records:",
+              data
+            );
+            historicalData = []; // Default to empty array if data format is wrong
+            statusEl.textContent =
+              "Error: Invalid data format received from history. Loaded 0 records.";
+          }
+          renderActiveTabContent(); // Update charts with the full historical data
+        } catch (error) {
+          console.error("Failed to load initial data:", error);
+          historicalData = []; // Ensure it's an empty array on error
+          statusEl.textContent = `Error loading data: ${error.message}. Try refreshing.`;
+          renderActiveTabContent(); // Attempt to render, likely with no data
+        }
+      }
+
+      // --- Core Logic (Polling, Fetching, Merging) ---
+      async function fetchAllPages(baseUrl, token) {
+        let allResults = [];
+        // MODIFIED: Use MAX_PAGES_TO_FETCH_LIVE for fetching new data
+        for (let i = 1; i <= MAX_PAGES_TO_FETCH_LIVE; i++) {
+          try {
+            const response = await fetch(`${baseUrl}/${i}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!response.ok) {
+              console.error(`Failed to fetch page ${i} from ${baseUrl}`);
+              break;
+            }
+            const data = await response.json();
+            const batch = data.result || [];
+            if (batch.length === 0) break;
+            allResults.push(...batch);
+          } catch (error) {
+            console.error(`Error fetching page ${i} from ${baseUrl}:`, error);
+            break;
+          }
+        }
+        return allResults;
+      }
+      async function fetchAndMergeData() {
+        const token = document.getElementById("api-token").value.trim();
+        if (!token) {
+          // alert("API Token is required.");
+          // Optionally, just show in status and don't alert if polling is passive
+          document.getElementById("status").textContent =
+            "API Token needed for polling.";
+          return;
+        }
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = `Fetching up to ${MAX_PAGES_TO_FETCH_LIVE} pages of new data...`;
+
+        try {
+          const newTransactions = await fetchAllPages(
+            `${API_BASE}/transactions`,
+            token
+          );
+          let addedCount = 0;
+          const recordsToSave = newTransactions.filter((tx) => {
+            const key = createTxKey(tx);
+            if (!knownTxKeys.has(key)) {
+              knownTxKeys.add(key);
+              historicalData.push(tx);
+              addedCount++;
+              return true;
+            }
+            return false;
+          });
+          if (addedCount > 0) {
+            await fetch(`${API_BASE}/history`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(recordsToSave),
+            });
+          }
+          statusEl.textContent = `Update complete. Found ${addedCount} new transaction(s).`;
+          renderActiveTabContent();
+        } catch (error) {
+          statusEl.textContent = `Error: ${error.message}`;
+          stopPolling();
+        }
+      }
+
+      // --- Tab & Content Rendering ---
+      function renderTabsAndContent() {
+        const tabNav = document.getElementById("tab-nav");
+        tabNav.innerHTML = "";
+        trackedItems.forEach((item) => {
+          const btn = document.createElement("button");
+          btn.className = "tab-btn";
+          btn.dataset.key = item.key;
+          btn.textContent = item.displayName;
+          btn.onclick = () => switchTab(item.key);
+
+          if (item.type === "item") {
+            const clearHistoryBtn = document.createElement("span");
+            clearHistoryBtn.className = "remove-btn";
+            clearHistoryBtn.innerHTML = "&#128465;";
+            clearHistoryBtn.title = "Clear history for this item";
+            clearHistoryBtn.style.marginLeft = "5px";
+            clearHistoryBtn.style.backgroundColor = "#f39c12";
+            clearHistoryBtn.onclick = (e) => {
+              e.stopPropagation();
+              // MODIFIED: Pass item.key to clearItemHistory
+              clearItemHistory(item.key, item.displayName);
+            };
+            btn.appendChild(clearHistoryBtn);
+          }
+
+          const removeBtn = document.createElement("span");
+          removeBtn.className = "remove-btn";
+          removeBtn.innerHTML = "&times;";
+          removeBtn.title = "Remove this tracker";
+          removeBtn.onclick = (e) => {
+            e.stopPropagation();
+            removeTracked(item.key);
+          };
+          btn.appendChild(removeBtn);
+          tabNav.appendChild(btn);
+        });
+        if (!activeTabKey && trackedItems.length > 0)
+          activeTabKey = trackedItems[0].key;
+        if (trackedItems.length === 0) activeTabKey = null;
+        switchTab(activeTabKey);
+      }
+      function switchTab(key) {
+        const previousTabKey = activeTabKey;
+        activeTabKey = key;
+        document
+          .querySelectorAll(".tab-btn")
+          .forEach((btn) => btn.classList.remove("active"));
+        document
+          .querySelectorAll(".tab-content")
+          .forEach((content) => content.classList.remove("active"));
+        if (!key) {
+          document
+            .getElementById("placeholder-content")
+            .classList.add("active");
+          return;
+        }
+        document
+          .querySelector(`.tab-btn[data-key="${key}"]`)
+          ?.classList.add("active");
+
+        // Clear market cap chart only when switching between different market cap tabs
+        const previousItem = trackedItems.find((t) => t.key === previousTabKey);
+        const currentItem = trackedItems.find((t) => t.key === key);
+        if (
+          currentItem?.type === "marketcap" &&
+          (previousItem?.type !== "marketcap" || previousTabKey !== key)
+        ) {
+          marketCapChart.data.datasets = [];
+          marketCapChart.update("none");
+        }
+
+        renderActiveTabContent();
+      }
+      function renderActiveTabContent() {
+        if (!activeTabKey) return;
+        const item = trackedItems.find((t) => t.key === activeTabKey);
+        if (!item) return;
+        if (item.type === "item") {
+          document.getElementById("chart-content").classList.add("active");
+          updateChartForItemTracker(item);
+        } else if (item.type === "price") {
+          document.getElementById("price-content").classList.add("active");
+          updateContentForPriceTracker(item);
+        } else if (item.type === "marketcap") {
+          document.getElementById("market-cap-content").classList.add("active");
+          updateContentForMarketCapTracker(item);
+        }
+      }
+
+      // --- Charting & Data Display ---
+      function initCharts() {
+        const sharedZoomOptions = {
+          pan: { enabled: true, mode: "xy" },
+          zoom: {
+            wheel: { enabled: true },
+            pinch: { enabled: true },
+            mode: "xy",
+          },
+        };
+
+        itemChart = new Chart(document.getElementById("market-chart"), {
+          type: "line",
+          data: { datasets: [] },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { type: "time", time: { unit: "day" } },
+              y: { beginAtZero: false },
+            },
+            plugins: {
+              legend: { position: "top" }, // Keep default legend for item-specific chart
+              title: { display: true, text: "Price History" },
+              zoom: sharedZoomOptions,
+            },
+            onClick: (event, elements) =>
+              handleChartClick(event, elements, itemChart),
+          },
+        });
+        priceChart = new Chart(document.getElementById("price-scatter-chart"), {
+          type: "scatter",
+          data: { datasets: [] },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                type: "time",
+                time: {
+                  unit: "hour",
+                  displayFormats: { hour: "MMM d, HH:mm" },
+                },
+              },
+              y: {
+                beginAtZero: false,
+                ticks: { callback: (value) => value.toLocaleString() },
+              },
+            },
+            plugins: {
+              legend: {
+                display: false, // Disable default legend for priceChart
+              },
+              title: { display: true, text: "High-Value Sales" },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    let label = context.dataset.label || "";
+                    if (label) label += ": ";
+                    if (context.parsed.y !== null) {
+                      label += new Intl.NumberFormat().format(context.parsed.y);
+                    }
+                    const fullData = context.raw?.fullData;
+                    if (fullData) {
+                      label += ` (Seller: ${fullData.seller.name}, Count: ${fullData.item.count})`;
+                    }
+                    return label;
+                  },
+                },
+              },
+              zoom: sharedZoomOptions,
+            },
+            onClick: (event, elements) =>
+              handleChartClick(event, elements, priceChart),
+          },
+        });
+
+        marketCapChart = new Chart(
+          document.getElementById("market-cap-chart"),
+          {
+            type: "scatter",
+            data: { datasets: [] },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                x: {
+                  type: "time",
+                  time: {
+                    unit: "hour",
+                    displayFormats: { hour: "MMM d, HH:mm" },
+                  },
+                },
+                y: {
+                  beginAtZero: false,
+                  ticks: { callback: (value) => value.toLocaleString() },
+                },
+              },
+              plugins: {
+                legend: {
+                  display: false, // Disable default legend for marketCapChart
+                },
+                title: { display: true, text: "Market Cap Analysis" },
+                tooltip: {
+                  callbacks: {
+                    label: function (context) {
+                      let label = context.dataset.label || "";
+                      if (label) label += ": ";
+                      if (context.parsed.y !== null) {
+                        label += new Intl.NumberFormat().format(
+                          context.parsed.y
+                        );
+                      }
+                      const fullData = context.raw?.fullData;
+                      if (fullData) {
+                        label += ` (Seller: ${fullData.seller.name}, Count: ${fullData.item.count})`;
+                      }
+                      return label;
+                    },
+                  },
+                },
+                zoom: sharedZoomOptions,
+              },
+              onClick: (event, elements) =>
+                handleChartClick(event, elements, marketCapChart),
+            },
+          }
+        );
+      } // ADDED: Function to filter data by time window
+      function filterDataByTimeWindow(data, timeWindowId = "time-window") {
+        const timeWindow = document.getElementById(timeWindowId).value;
+        if (timeWindow === "all") return data;
+
+        const now = Date.now();
+        let cutoffTime;
+
+        switch (timeWindow) {
+          case "1h":
+            cutoffTime = now - 1 * 60 * 60 * 1000;
+            break;
+          case "6h":
+            cutoffTime = now - 6 * 60 * 60 * 1000;
+            break;
+          case "1d":
+            cutoffTime = now - 24 * 60 * 60 * 1000;
+            break;
+          case "1w":
+            cutoffTime = now - 7 * 24 * 60 * 60 * 1000;
+            break;
+          case "custom":
+            const customValueId =
+              timeWindowId === "market-time-window"
+                ? "market-custom-value"
+                : "custom-value";
+            const customUnitId =
+              timeWindowId === "market-time-window"
+                ? "market-custom-unit"
+                : "custom-unit";
+            const customValue =
+              parseInt(document.getElementById(customValueId).value) || 1;
+            const customUnit = document.getElementById(customUnitId).value;
+            let multiplier;
+            switch (customUnit) {
+              case "minutes":
+                multiplier = 60 * 1000;
+                break;
+              case "hours":
+                multiplier = 60 * 60 * 1000;
+                break;
+              case "days":
+                multiplier = 24 * 60 * 60 * 1000;
+                break;
+              default:
+                multiplier = 24 * 60 * 60 * 1000; // Default to days
+            }
+            cutoffTime = now - customValue * multiplier;
+            break;
+          default:
+            return data;
+        }
+
+        return data.filter((tx) => tx.unixMillisDateSold >= cutoffTime);
+      }
+
+      // ADDED: Function to show stats for the active chart
+      function showStatsForActiveChart() {
+        if (!activeTabKey) {
+          alert("No active chart to show stats for.");
+          return;
+        }
+
+        const activeTracker = trackedItems.find((t) => t.key === activeTabKey);
+        if (!activeTracker || activeTracker.type !== "item") {
+          alert("Stats are only available for item trackers.");
+          return;
+        }
+
+        let relevantData;
+        if (activeTracker.mode === "shulker") {
+          relevantData = historicalData.filter((tx) => {
+            const isShulkerTxItem =
+              tx.item.id === "minecraft:shulker_box" ||
+              isColoredShulker(tx.item.id);
+            if (!isShulkerTxItem) return false;
+            const contents = tx.item.contents;
+            if (!contents || contents.length !== 27) return false;
+            return contents.every(
+              (slot) =>
+                slot.id === activeTracker.contentId &&
+                slot.count === activeTracker.stackSize
+            );
+          });
+        } else {
+          relevantData = historicalData.filter(
+            (tx) => tx.item.id === activeTracker.id
+          );
+        }
+
+        // Apply time window filter
+        const filteredData = filterDataByTimeWindow(relevantData);
+
+        if (filteredData.length === 0) {
+          alert("No data available for the selected time window.");
+          return;
+        }
+
+        const prices = filteredData.map((tx) => tx.price);
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        const sorted = prices.sort((a, b) => a - b);
+        const median =
+          sorted.length % 2 === 0
+            ? Math.floor(
+                (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+              )
+            : sorted[Math.floor(sorted.length / 2)];
+
+        const timeWindowText =
+          document.getElementById("time-window").selectedOptions[0].text;
+
+        alert(
+          `Stats for ${
+            activeTracker.displayName
+          } (${timeWindowText}):\n\nCount: ${
+            filteredData.length
+          }\nMin: ${min.toLocaleString()}\nMedian: ${median.toLocaleString()}\nMax: ${max.toLocaleString()}`
+        );
+      }
+      function updateChartForItemTracker(tracked) {
+        if (!itemChart || !tracked) return;
+
+        let relevantData;
+        let chartTitle;
+
+        // MODIFIED: Handle shulker tracker mode
+        if (tracked.mode === "shulker") {
+          relevantData = historicalData
+            .filter((tx) => {
+              const isShulkerTxItem =
+                tx.item.id === "minecraft:shulker_box" ||
+                isColoredShulker(tx.item.id);
+              if (!isShulkerTxItem) return false;
+
+              const contents = tx.item.contents;
+              if (!contents || contents.length !== 27) return false;
+
+              return contents.every(
+                (slot) =>
+                  slot.id === tracked.contentId &&
+                  slot.count === tracked.stackSize
+              );
+            })
+            .sort((a, b) => a.unixMillisDateSold - b.unixMillisDateSold);
+          chartTitle = `Price History for Full Shulker of ${tracked.displayName} (${tracked.contentId} x${tracked.stackSize})`;
+        } else {
+          // mode === "simple" or undefined (legacy)
+          relevantData = historicalData
+            .filter((tx) => tx.item.id === tracked.id) // 'id' for simple items
+            .sort((a, b) => a.unixMillisDateSold - b.unixMillisDateSold);
+          chartTitle = `Price History for ${tracked.displayName}`;
+        }
+
+        // ADDED: Apply time window filter
+        relevantData = filterDataByTimeWindow(relevantData);
+
+        itemChart.data.datasets = [
+          {
+            label: tracked.displayName,
+            data: relevantData.map((tx) => ({
+              x: tx.unixMillisDateSold,
+              y: tx.price,
+              fullData: tx,
+            })),
+            borderColor: "#3498db",
+            tension: 0.1,
+          },
+        ];
+        itemChart.options.plugins.title.text = chartTitle;
+        itemChart.update("none");
+      }
+      function updateContentForPriceTracker(tracked) {
+        const trackerKey = tracked.key;
+        // Ensure a visibility store exists for the current tab
+        if (!priceChartLegendVisibility[trackerKey]) {
+          priceChartLegendVisibility[trackerKey] = {};
+        }
+        const tabVisibilityStore = priceChartLegendVisibility[trackerKey];
+
+        const relevantSales = historicalData.filter(
+          (tx) =>
+            tx.price > tracked.threshold && !blacklist.includes(tx.item.id)
+        );
+        const salesByItem = relevantSales.reduce((acc, tx) => {
+          (acc[tx.item.id] = acc[tx.item.id] || []).push({
+            x: tx.unixMillisDateSold,
+            y: tx.price,
+            fullData: tx,
+          });
+          return acc;
+        }, {});
+
+        Object.keys(salesByItem).forEach((itemId) => {
+          if (!itemColors[itemId]) {
+            itemColors[itemId] = `hsla(${
+              (Object.keys(itemColors).length * 60) % 360
+            }, 70%, 50%, 0.7)`;
+          }
+        });
+
+        priceChart.data.datasets = Object.keys(salesByItem).map((itemId) => ({
+          label: itemId,
+          data: salesByItem[itemId],
+          backgroundColor: itemColors[itemId],
+          // Apply hidden state from our tab-specific persistent store
+          hidden: tabVisibilityStore[itemId] === true,
+        }));
+        priceChart.update("none");
+
+        renderCustomPriceLegend(priceChart.data.datasets, trackerKey); // Pass trackerKey
+
+        const listEl = document.getElementById("price-results-list");
+        listEl.innerHTML =
+          "<li>Active listings functionality has been removed. Use Market Cap tracking instead.</li>";
+      }
+      function updateContentForMarketCapTracker(tracked) {
+        const trackerKey = tracked.key;
+
+        // Update the market cap range display
+        updateMarketCapRangeDisplay(tracked);
+
+        // Apply time window filter
+        const timeFilteredData = filterDataByTimeWindow(
+          historicalData,
+          "market-time-window"
+        );
+
+        // Filter by price range and blacklist
+        const relevantSales = timeFilteredData.filter(
+          (tx) =>
+            tx.price >= tracked.minPrice &&
+            tx.price <= tracked.maxPrice &&
+            !blacklist.includes(tx.item.id)
+        );
+
+        // Group identical items (same item id, count, enchants, shulker contents)
+        const itemGroups = {};
+        relevantSales.forEach((tx) => {
+          const itemKey = createItemGroupKey(tx.item);
+          if (!itemGroups[itemKey]) {
+            itemGroups[itemKey] = {
+              item: tx.item,
+              transactions: [],
+              sellers: new Set(),
+              totalSold: 0,
+              totalValue: 0,
+              prices: [],
+            };
+          }
+          itemGroups[itemKey].transactions.push(tx);
+          itemGroups[itemKey].sellers.add(tx.seller.name);
+          itemGroups[itemKey].totalSold++;
+          itemGroups[itemKey].totalValue += tx.price;
+          itemGroups[itemKey].prices.push(tx.price);
+        }); // Sort by market cap (sales count)
+        const sortedGroups = Object.entries(itemGroups).sort(
+          ([, a], [, b]) => b.totalSold - a.totalSold
+        );
+
+        // Render the list
+        renderMarketCapList(sortedGroups, trackerKey);
+
+        // Render the custom legend for market cap (preserve existing chart data)
+        renderCustomMarketCapLegend(marketCapChart.data.datasets, trackerKey);
+      }
+
+      function updateMarketCapRangeDisplay(tracked) {
+        const rangeDisplay = document.getElementById(
+          "market-cap-range-display"
+        );
+        if (rangeDisplay) {
+          rangeDisplay.textContent = `Price Range: ${tracked.minPrice.toLocaleString()} - ${tracked.maxPrice.toLocaleString()}`;
+        }
+      }
+
+      function createItemGroupKey(item) {
+        let key = `${item.id}:${item.count}`;
+
+        // Add enchantments to key
+        if (item.enchants?.enchantments?.levels) {
+          const enchantStr = Object.entries(item.enchants.enchantments.levels)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([k, v]) => `${k}:${v}`)
+            .join(",");
+          key += `:enchants:${enchantStr}`;
+        }
+
+        // Add trim to key
+        if (item.enchants?.trim?.material && item.enchants?.trim?.pattern) {
+          key += `:trim:${item.enchants.trim.material}:${item.enchants.trim.pattern}`;
+        }
+
+        // Add shulker contents to key
+        if (item.contents && item.contents.length > 0) {
+          const contentsStr = item.contents
+            .map((c) => `${c.id}:${c.count}`)
+            .sort()
+            .join(",");
+          key += `:contents:${contentsStr}`;
+        }
+
+        return key;
+      }
+
+      function renderMarketCapList(sortedGroups, trackerKey) {
+        const listEl = document.getElementById("market-cap-results-list");
+        listEl.innerHTML = "";
+
+        if (sortedGroups.length === 0) {
+          listEl.innerHTML =
+            "<li>No items found in the specified price range and time window.</li>";
+          return;
+        }
+
+        sortedGroups.forEach(([itemKey, group]) => {
+          const li = document.createElement("li");
+          li.className = "market-cap-item";
+
+          let itemHTML = `<strong>${group.item.id}</strong> (Count: ${group.item.count})`;
+
+          // Add enchantments
+          const enchants = formatEnchantments(group.item.enchants);
+          if (enchants) {
+            itemHTML += `<br><span class="enchantment-text">${enchants}</span>`;
+          }
+
+          // Add trim
+          if (
+            group.item.enchants?.trim?.material &&
+            group.item.enchants?.trim?.pattern
+          ) {
+            itemHTML += `<br><span class="enchantment-text">Trim: ${group.item.enchants.trim.material.replace(
+              "minecraft:",
+              ""
+            )} ${group.item.enchants.trim.pattern.replace(
+              "minecraft:",
+              ""
+            )}</span>`;
+          }
+
+          // Add shulker contents
+          if (group.item.contents && group.item.contents.length > 0) {
+            const isShulker =
+              group.item.id === "minecraft:shulker_box" ||
+              isColoredShulker(group.item.id);
+            if (
+              isShulker &&
+              isColoredShulker(group.item.id) &&
+              group.item.contents.length === 0
+            ) {
+              itemHTML += `<br><span style="color: red;">Shulker contents may not be shown due to API limitations.</span>`;
+            } else if (group.item.contents.length > 0) {
+              itemHTML += `<br><span class="shulker-link" onclick='showShulkerContents(${JSON.stringify(
+                group.item.contents
+              )}, "${group.item.id}")'>(View Shulker Contents)</span>`;
+            }
+          }
+          itemHTML += `<br><strong>Market Cap: ${group.totalSold} sold</strong>`;
+          itemHTML += `<br><strong>Total Value: ${group.totalValue.toLocaleString()}</strong>`;
+          itemHTML += `<br><strong>Unique Sellers: ${group.sellers.size}</strong>`;
+
+          // Calculate and display median price
+          const sortedPrices = group.prices.sort((a, b) => a - b);
+          const median =
+            sortedPrices.length % 2 === 0
+              ? Math.floor(
+                  (sortedPrices[sortedPrices.length / 2 - 1] +
+                    sortedPrices[sortedPrices.length / 2]) /
+                    2
+                )
+              : sortedPrices[Math.floor(sortedPrices.length / 2)];
+          itemHTML += `<br><strong>Median Price: ${median.toLocaleString()}</strong>`;
+
+          // Add buttons
+          itemHTML += `<div class="market-cap-buttons">
+            <button onclick="showMarketCapGraph('${itemKey}', '${trackerKey}')">Show Graph</button>
+            <button onclick="showMarketCapSellers('${itemKey}')">Sellers</button>
+          </div>`;
+
+          li.innerHTML = itemHTML;
+          listEl.appendChild(li);
+        });
+      }
+      function showMarketCapGraph(itemKey, trackerKey) {
+        const activeTracker = trackedItems.find((t) => t.key === trackerKey);
+        if (!activeTracker) return;
+
+        // Apply time window filter
+        const timeFilteredData = filterDataByTimeWindow(
+          historicalData,
+          "market-time-window"
+        );
+
+        // Filter by price range and blacklist
+        const relevantSales = timeFilteredData.filter(
+          (tx) =>
+            tx.price >= activeTracker.minPrice &&
+            tx.price <= activeTracker.maxPrice &&
+            !blacklist.includes(tx.item.id)
+        );
+
+        // Find transactions for this specific item group
+        const itemTransactions = relevantSales.filter(
+          (tx) => createItemGroupKey(tx.item) === itemKey
+        );
+
+        if (itemTransactions.length === 0) {
+          alert(
+            "No transactions found for this item in the current time window."
+          );
+          return;
+        }
+
+        // Assign color if not exists
+        if (!itemColors[itemKey]) {
+          itemColors[itemKey] = `hsla(${
+            (Object.keys(itemColors).length * 60) % 360
+          }, 70%, 50%, 0.7)`;
+        }
+
+        // Update market cap chart
+        marketCapChart.data.datasets = [
+          {
+            label: itemTransactions[0].item.id,
+            data: itemTransactions.map((tx) => ({
+              x: tx.unixMillisDateSold,
+              y: tx.price,
+              fullData: tx,
+            })),
+            backgroundColor: itemColors[itemKey],
+          },
+        ];
+        marketCapChart.update("default"); // Use animation to make the update visible
+
+        // Update the legend to show the current item
+        renderCustomMarketCapLegend(marketCapChart.data.datasets, trackerKey);
+
+        // Scroll to the chart and make it obvious that it's been updated
+        const chartElement = document.getElementById("market-cap-chart");
+        if (chartElement) {
+          chartElement.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+
+          // Add a brief highlight effect to make the chart change obvious
+          const chartContainer = chartElement.parentElement;
+          if (chartContainer) {
+            chartContainer.style.border = "3px solid #3498db";
+            chartContainer.style.borderRadius = "8px";
+            setTimeout(() => {
+              chartContainer.style.border = "";
+              chartContainer.style.borderRadius = "";
+            }, 2000);
+          }
+        }
+      }
+
+      function showMarketCapSellers(itemKey) {
+        const activeTracker = trackedItems.find(
+          (t) => t.type === "marketcap" && t.key === activeTabKey
+        );
+        if (!activeTracker) return;
+
+        // Apply time window filter
+        const timeFilteredData = filterDataByTimeWindow(
+          historicalData,
+          "market-time-window"
+        );
+
+        // Filter by price range and blacklist
+        const relevantSales = timeFilteredData.filter(
+          (tx) =>
+            tx.price >= activeTracker.minPrice &&
+            tx.price <= activeTracker.maxPrice &&
+            !blacklist.includes(tx.item.id)
+        );
+
+        // Find transactions for this specific item group
+        const itemTransactions = relevantSales.filter(
+          (tx) => createItemGroupKey(tx.item) === itemKey
+        );
+
+        if (itemTransactions.length === 0) {
+          alert("No sellers found for this item in the current time window.");
+          return;
+        }
+
+        // Group by seller
+        const sellerGroups = {};
+        itemTransactions.forEach((tx) => {
+          if (!sellerGroups[tx.seller.name]) {
+            sellerGroups[tx.seller.name] = {
+              count: 0,
+              totalValue: 0,
+              transactions: [],
+            };
+          }
+          sellerGroups[tx.seller.name].count++;
+          sellerGroups[tx.seller.name].totalValue += tx.price;
+          sellerGroups[tx.seller.name].transactions.push(tx);
+        });
+
+        // Create modal content
+        let modalHTML = `<h3>Sellers for ${itemTransactions[0].item.id}</h3>`;
+        modalHTML += `<p><strong>Total Sales:</strong> ${itemTransactions.length}</p>`;
+        modalHTML += `<h4>Seller Breakdown:</h4><ul>`;
+
+        Object.entries(sellerGroups)
+          .sort(([, a], [, b]) => b.count - a.count)
+          .forEach(([seller, data]) => {
+            modalHTML += `<li><strong>${seller}</strong>: ${
+              data.count
+            } sales, ${data.totalValue.toLocaleString()} total value</li>`;
+          });
+
+        modalHTML += `</ul>`;
+
+        document.getElementById("modal-body").innerHTML = modalHTML;
+        document.getElementById("details-modal").style.display = "block";
+      }
+
+      // --- UI Interaction & Item Management ---
+      function formatEnchantments(enchants) {
+        if (!enchants?.enchantments?.levels) return "";
+        return Object.entries(enchants.enchantments.levels)
+          .map(([key, value]) => `${key.replace("minecraft:", "")} ${value}`)
+          .join(", ");
+      }
+
+      function isColoredShulker(itemId) {
+        if (!itemId) return false;
+        // Matches minecraft:COLOR_shulker_box but not minecraft:shulker_box
+        // e.g. minecraft:red_shulker_box, minecraft:blue_shulker_box
+        return (
+          itemId.endsWith("_shulker_box") && itemId !== "minecraft:shulker_box"
+        );
+      }
+
+      // Old: function showShulkerContents(contents) {
+      function showShulkerContents(contents, itemId) {
+        // Added itemId
+        let contentHTML = "<h3>Shulker Contents</h3>";
+        if (isColoredShulker(itemId) && (!contents || contents.length === 0)) {
+          contentHTML += `<p style="color: red;">Due to an API issue, contents for colored shulker boxes may not be shown.</p>`;
+        } else if (!contents || contents.length === 0) {
+          contentHTML += "<p>This shulker box is empty.</p>";
+        } else {
+          contentHTML += "<ul>";
+          contents.forEach((item) => {
+            let itemHTML = `${item.count}x ${item.id}`;
+            const enchants = formatEnchantments(item.enchants);
+            if (enchants)
+              itemHTML += ` <span class="enchantment-text">(${enchants})</span>`;
+            contentHTML += `<li>${itemHTML}</li>`;
+          });
+          contentHTML += "</ul>";
+        }
+        document.getElementById("modal-body").innerHTML = contentHTML;
+        document.getElementById("details-modal").style.display = "block";
+      }
+
+      async function handleChartClick(event, elements, chartInstance) {
+        if (elements.length) {
+          const dataPoint =
+            chartInstance.data.datasets[elements[0].datasetIndex].data[
+              elements[0].index
+            ];
+          if (dataPoint.fullData) openTransactionModal(dataPoint.fullData);
+        }
+      }
+
+      async function openTransactionModal(tx) {
+        const token = document.getElementById("api-token").value.trim();
+        let enchants = formatEnchantments(tx.item.enchants);
+
+        let shulkerContentsHTML = "";
+        if (tx.item.id.includes("shulker_box")) {
+          // Check if the item itself is a shulker
+          if (
+            isColoredShulker(tx.item.id) &&
+            (!tx.item.contents || tx.item.contents.length === 0)
+          ) {
+            shulkerContentsHTML = `<h3>Shulker Contents:</h3><p style="color: red;">Due to an API issue, contents for this shulker box may not be shown.</p>`;
+          } else if (!tx.item.contents || tx.item.contents.length === 0) {
+            shulkerContentsHTML =
+              "<h3>Shulker Contents:</h3><p>This shulker box is empty.</p>";
+          } else {
+            shulkerContentsHTML = "<h3>Shulker Contents:</h3><ul>";
+            tx.item.contents.forEach((contentItem) => {
+              let itemDetail = `${contentItem.count}x ${contentItem.id}`;
+              const itemEnchants = formatEnchantments(contentItem.enchants);
+              if (itemEnchants)
+                itemDetail += ` <span class="enchantment-text">(${itemEnchants})</span>`;
+              shulkerContentsHTML += `<li>${itemDetail}</li>`;
+            });
+            shulkerContentsHTML += "</ul>";
+          }
+        }
+
+        let modalHTML = `<h3>Transaction Details</h3><p><strong>Item:</strong> ${
+          tx.item.id
+        } (Count: ${tx.item.count})</p>${
+          enchants ? `<p class="enchantment-text">${enchants}</p>` : ""
+        }<p><strong>Price:</strong> ${tx.price.toLocaleString()}</p><p><strong>Seller:</strong> ${
+          tx.seller.name
+        }</p><p id="modal-seller-money">Fetching seller balance...</p><p><strong>Time:</strong> ${new Date(
+          tx.unixMillisDateSold
+        ).toLocaleString()}</p>${shulkerContentsHTML}`; // ADDED shulkerContentsHTML
+        document.getElementById("modal-body").innerHTML = modalHTML;
+        document.getElementById("details-modal").style.display = "block";
+        try {
+          const response = await fetch(`${API_BASE}/stats/${tx.seller.name}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const statData = await response.json();
+          const money = statData.result?.money ?? "Error";
+          document.getElementById(
+            "modal-seller-money"
+          ).textContent = `Seller Balance: ${
+            !isNaN(money) ? parseInt(money).toLocaleString() : money
+          }`;
+        } catch (e) {
+          document.getElementById(
+            "modal-seller-money"
+          ).textContent = `Seller Balance: Could not fetch.`;
+        }
+      } // FIX: New function to reset the correct chart's zoom
+      function resetActiveChartZoom() {
+        if (!activeTabKey) return;
+        const activeTracker = trackedItems.find((t) => t.key === activeTabKey);
+        if (!activeTracker) return;
+        if (activeTracker.type === "item" && itemChart) {
+          itemChart.resetZoom();
+        } else if (activeTracker.type === "price" && priceChart) {
+          priceChart.resetZoom();
+        } else if (activeTracker.type === "marketcap" && marketCapChart) {
+          marketCapChart.resetZoom();
+        }
+      }
+
+      function closeModal() {
+        document.getElementById("details-modal").style.display = "none";
+      }
+      function createTxKey(tx) {
+        // Robust key creation
+        const timestamp =
+          tx.unixMillisDateSold !== undefined
+            ? tx.unixMillisDateSold
+            : "unknown_timestamp";
+        const price = tx.price !== undefined ? tx.price : "unknown_price";
+        const itemId = tx.item && tx.item.id ? tx.item.id : "unknown_item_id";
+        const sellerName =
+          tx.seller && tx.seller.name ? tx.seller.name : "unknown_seller";
+        return `${timestamp}-${price}-${itemId}-${sellerName}`;
+      }
+      function startPolling() {
+        if (!document.getElementById("api-token").value.trim()) {
+          alert("API token required.");
+          return;
+        }
+        if (pollingInterval) return;
+        document.getElementById("status").textContent =
+          "Live tracking started...";
+        fetchAndMergeData();
+        pollingInterval = setInterval(fetchAndMergeData, POLLING_RATE);
+      }
+      function stopPolling() {
+        if (!pollingInterval) return;
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+        document.getElementById("status").textContent =
+          "Live tracking stopped.";
+      }
+      function addItem() {
+        const displayName = document
+          .getElementById("display-name")
+          .value.trim();
+        const itemId = document.getElementById("item-id").value.trim(); // This is content ID if shulker
+        const isShulker = document.getElementById("shulker-checkbox").checked;
+        const itemStackSizeInput = document.getElementById("item-stack-size");
+        const itemStackSize = parseInt(itemStackSizeInput.value);
+
+        if (!displayName || !itemId) {
+          alert("Display Name and Item ID (or Shulker Content ID) required.");
+          return;
+        }
+
+        let key;
+        let newItem;
+
+        if (isShulker) {
+          if (isNaN(itemStackSize) || itemStackSize <= 0) {
+            alert("Valid max stack size required for shulker tracking.");
+            return;
+          }
+          key = `shulker:${displayName}:${itemId}:${itemStackSize}`;
+          newItem = {
+            type: "item",
+            mode: "shulker",
+            displayName,
+            contentId: itemId,
+            stackSize: itemStackSize,
+            key,
+          };
+        } else {
+          key = `item:${displayName}:${itemId}`;
+          newItem = {
+            type: "item",
+            mode: "simple", // Explicitly set mode
+            displayName,
+            id: itemId, // For simple items, 'id' is the item's own ID
+            key,
+          };
+        }
+
+        if (trackedItems.find((t) => t.key === key)) {
+          alert("Tracker with this configuration already exists.");
+          return;
+        }
+        trackedItems.push(newItem);
+        saveState();
+        renderTabsAndContent();
+
+        // Clear inputs
+        document.getElementById("display-name").value = "";
+        document.getElementById("item-id").value = "";
+        const shulkerCheckbox = document.getElementById("shulker-checkbox");
+        if (shulkerCheckbox) shulkerCheckbox.checked = false;
+        if (itemStackSizeInput) itemStackSizeInput.value = "64"; // Reset to default
+        const shulkerOptionsDiv = document.getElementById("shulker-options");
+        if (shulkerOptionsDiv) shulkerOptionsDiv.style.display = "none"; // Hide shulker options
+      }
+      function addPriceTracker() {
+        const price = parseInt(
+          document.getElementById("price-threshold").value
+        );
+        if (!price || price <= 0) {
+          alert("Valid price required.");
+          return;
+        }
+        const displayName = `Price > ${price.toLocaleString()}`;
+        const key = `price:${price}`;
+        if (trackedItems.find((t) => t.key === key)) {
+          alert("This price tracker already exists.");
+          return;
+        }
+        trackedItems.push({
+          type: "price",
+          displayName,
+          threshold: price,
+          key,
+        });
+        saveState();
+        renderTabsAndContent();
+        document.getElementById("price-threshold").value = "";
+      }
+
+      function addMarketCapTracker() {
+        const displayName = document
+          .getElementById("display-name-market")
+          .value.trim();
+        const minPrice = parseInt(document.getElementById("min-price").value);
+        const maxPrice = parseInt(document.getElementById("max-price").value);
+
+        if (!displayName) {
+          alert("Display name required.");
+          return;
+        }
+        if (!minPrice || minPrice <= 0) {
+          alert("Valid min price required.");
+          return;
+        }
+        if (!maxPrice || maxPrice <= 0 || maxPrice <= minPrice) {
+          alert("Valid max price (greater than min price) required.");
+          return;
+        }
+
+        const key = `marketcap:${minPrice}:${maxPrice}`;
+        if (trackedItems.find((t) => t.key === key)) {
+          alert("This market cap tracker already exists.");
+          return;
+        }
+
+        trackedItems.push({
+          type: "marketcap",
+          displayName,
+          minPrice,
+          maxPrice,
+          key,
+        });
+        saveState();
+        renderTabsAndContent();
+
+        // Clear inputs
+        document.getElementById("display-name-market").value = "";
+        document.getElementById("min-price").value = "";
+        document.getElementById("max-price").value = "";
+      }
+      function addBlacklistItem() {
+        const id = document.getElementById("blacklist-id").value.trim();
+        if (!id || blacklist.includes(id)) return;
+        blacklist.push(id);
+        document.getElementById("blacklist-id").value = "";
+        saveState();
+        renderBlacklist();
+        renderActiveTabContent();
+      }
+      function removeTracked(key) {
+        trackedItems = trackedItems.filter((t) => t.key !== key);
+        if (activeTabKey === key)
+          activeTabKey = trackedItems.length > 0 ? trackedItems[0].key : null;
+        saveState();
+        renderTabsAndContent();
+      }
+      function removeBlacklistItem(id) {
+        blacklist = blacklist.filter((item) => item !== id);
+        saveState();
+        renderBlacklist();
+        renderActiveTabContent();
+      }
+      function renderBlacklist() {
+        const list = document.getElementById("blacklist-items");
+        list.innerHTML = "";
+        blacklist.forEach((id) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<span>${id}<button class="remove-btn" onclick="removeBlacklistItem('${id}')" style="margin-left:auto;">&times;</button></span>`;
+          list.appendChild(li);
+        });
+      } // New function to render the custom legend for the price chart
+      function renderCustomPriceLegend(datasets, trackerKey) {
+        // Added trackerKey parameter
+        const legendContainer = document.getElementById("custom-price-legend");
+        legendContainer.innerHTML = ""; // Clear previous legend items
+
+        // Ensure a visibility store exists for the current tab for reading
+        const tabVisibilityStore = priceChartLegendVisibility[trackerKey] || {};
+
+        datasets.forEach((dataset, index) => {
+          const itemId = dataset.label;
+          const isHidden = tabVisibilityStore[itemId] === true;
+
+          const legendItem = document.createElement("div");
+          legendItem.className = "legend-item";
+          if (isHidden) {
+            legendItem.classList.add("hidden");
+          }
+
+          const colorBox = document.createElement("div");
+          colorBox.className = "legend-color-box";
+          if (isHidden) {
+            colorBox.classList.add("hidden");
+          }
+          colorBox.style.backgroundColor = dataset.backgroundColor;
+
+          const itemName = document.createElement("span");
+          itemName.textContent = itemId;
+
+          legendItem.appendChild(colorBox);
+          legendItem.appendChild(itemName);
+
+          legendItem.addEventListener("click", () => {
+            // Ensure a visibility store exists for the current tab for writing
+            if (!priceChartLegendVisibility[trackerKey]) {
+              priceChartLegendVisibility[trackerKey] = {};
+            }
+            // Toggle the state in our tab-specific persistent store
+            priceChartLegendVisibility[trackerKey][itemId] =
+              !priceChartLegendVisibility[trackerKey][itemId];
+
+            const meta = priceChart.getDatasetMeta(index);
+            if (meta) {
+              meta.hidden = priceChartLegendVisibility[trackerKey][itemId];
+            }
+
+            legendItem.classList.toggle(
+              "hidden",
+              priceChartLegendVisibility[trackerKey][itemId]
+            );
+            colorBox.classList.toggle(
+              "hidden",
+              priceChartLegendVisibility[trackerKey][itemId]
+            );
+
+            priceChart.update();
+            saveState(); // Save state after toggling legend item
+          });
+
+          legendContainer.appendChild(legendItem);
+        });
+      }
+
+      // Function to render the custom legend for the market cap chart
+      function renderCustomMarketCapLegend(datasets, trackerKey) {
+        const legendContainer = document.getElementById("custom-market-legend");
+        legendContainer.innerHTML = ""; // Clear previous legend items
+
+        // Ensure a visibility store exists for the current tab for reading
+        const tabVisibilityStore = marketCapLegendVisibility[trackerKey] || {};
+
+        datasets.forEach((dataset, index) => {
+          const itemId = dataset.label;
+          const isHidden = tabVisibilityStore[itemId] === true;
+
+          const legendItem = document.createElement("div");
+          legendItem.className = "legend-item";
+          if (isHidden) {
+            legendItem.classList.add("hidden");
+          }
+
+          const colorBox = document.createElement("div");
+          colorBox.className = "legend-color-box";
+          if (isHidden) {
+            colorBox.classList.add("hidden");
+          }
+          colorBox.style.backgroundColor = dataset.backgroundColor;
+
+          const itemName = document.createElement("span");
+          itemName.textContent = itemId;
+
+          legendItem.appendChild(colorBox);
+          legendItem.appendChild(itemName);
+
+          legendItem.addEventListener("click", () => {
+            // Ensure a visibility store exists for the current tab for writing
+            if (!marketCapLegendVisibility[trackerKey]) {
+              marketCapLegendVisibility[trackerKey] = {};
+            }
+            // Toggle the state in our tab-specific persistent store
+            marketCapLegendVisibility[trackerKey][itemId] =
+              !marketCapLegendVisibility[trackerKey][itemId];
+
+            const meta = marketCapChart.getDatasetMeta(index);
+            if (meta) {
+              meta.hidden = marketCapLegendVisibility[trackerKey][itemId];
+            }
+
+            legendItem.classList.toggle(
+              "hidden",
+              marketCapLegendVisibility[trackerKey][itemId]
+            );
+            colorBox.classList.toggle(
+              "hidden",
+              marketCapLegendVisibility[trackerKey][itemId]
+            );
+
+            marketCapChart.update();
+            saveState(); // Save state after toggling legend item
+          });
+
+          legendContainer.appendChild(legendItem);
+        });
+      }
+
+      // ADDED: Function to clear history for a specific item
+      async function clearItemHistory(itemKeyToClear, itemDisplayName) {
+        const trackedItemToClear = trackedItems.find(
+          (t) => t.key === itemKeyToClear
+        );
+        if (!trackedItemToClear) {
+          console.error("Could not find tracked item for key:", itemKeyToClear);
+          alert("Error: Could not identify item to clear history for.");
+          return;
+        }
+
+        if (
+          !confirm(
+            `Are you sure you want to delete all historical data for "${itemDisplayName}"? This action cannot be undone.`
+          )
+        ) {
+          return;
+        }
+
+        const statusEl = document.getElementById("status");
+        statusEl.textContent = `Deleting history for ${itemDisplayName}...`;
+
+        const initialCount = historicalData.length;
+        let newHistoricalData;
+
+        if (trackedItemToClear.mode === "shulker") {
+          newHistoricalData = historicalData.filter((tx) => {
+            const isShulkerTxItem =
+              tx.item.id === "minecraft:shulker_box" ||
+              isColoredShulker(tx.item.id);
+            if (!isShulkerTxItem) return true; // Keep non-shulker items
+
+            const contents = tx.item.contents;
+            // Keep shulkers that are not full (27 slots) or if contents are missing
+            if (!contents || contents.length !== 27) return true;
+
+            // If it IS a shulker that matches the criteria (all slots match contentId and stackSize),
+            // then filter it out (return false). Otherwise, keep it (return true).
+            return !contents.every(
+              (slot) =>
+                slot.id === trackedItemToClear.contentId &&
+                slot.count === trackedItemToClear.stackSize
+            );
+          });
+        } else {
+          // mode === "simple" or undefined (legacy)
+          newHistoricalData = historicalData.filter(
+            (tx) => tx.item.id !== trackedItemToClear.id // 'id' for simple items
+          );
+        }
+
+        const removedCount = initialCount - newHistoricalData.length;
+
+        if (removedCount === 0) {
+          statusEl.textContent = `No historical data found for ${itemDisplayName} to delete.`;
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE}/history/overwrite`, {
+            method: "POST", // Ensure method is POST as per backend
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(newHistoricalData),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.text(); // Get more details from backend error
+            throw new Error(
+              `Backend error when overwriting history: ${response.status} ${errorData}`
+            );
+          }
+
+          historicalData = newHistoricalData; // Update global historical data
+
+          // Rebuild knownTxKeys as historicalData has changed
+          knownTxKeys.clear();
+          historicalData.forEach((tx) => knownTxKeys.add(createTxKey(tx)));
+
+          statusEl.textContent = `Successfully deleted ${removedCount} record(s) for ${itemDisplayName}.`;
+          renderActiveTabContent(); // Re-render the current tab's content to reflect changes
+          saveState(); // Save other state like tracked items, blacklist
+        } catch (error) {
+          console.error("Error clearing item history:", error);
+          statusEl.textContent = `Error deleting history: ${error.message}`;
+        }
+      }
+      function saveState() {
+        localStorage.setItem(
+          "marketTracker_trackedItems_v3",
+          JSON.stringify(trackedItems)
+        );
+        localStorage.setItem(
+          "marketTracker_blacklist_v3",
+          JSON.stringify(blacklist)
+        );
+        localStorage.setItem(
+          "marketTracker_priceChartLegendVisibility_v1",
+          JSON.stringify(priceChartLegendVisibility)
+        ); // Save legend visibility
+        localStorage.setItem(
+          "marketTracker_marketCapLegendVisibility_v1",
+          JSON.stringify(marketCapLegendVisibility)
+        ); // Save market cap legend visibility
+        const token = document.getElementById("api-token").value;
+        if (token) localStorage.setItem("marketTracker_token", token);
+      }
+      function loadState() {
+        const token = localStorage.getItem("marketTracker_token");
+        if (token) document.getElementById("api-token").value = token;
+        const storedTracked = localStorage.getItem(
+          "marketTracker_trackedItems_v3"
+        );
+        if (storedTracked) trackedItems = JSON.parse(storedTracked);
+        const storedBlacklist = localStorage.getItem(
+          "marketTracker_blacklist_v3"
+        );
+        if (storedBlacklist) blacklist = JSON.parse(storedBlacklist);
+        renderBlacklist();
+
+        // Load legend visibility state
+        const storedLegendVisibility = localStorage.getItem(
+          "marketTracker_priceChartLegendVisibility_v1"
+        );
+        if (storedLegendVisibility) {
+          priceChartLegendVisibility = JSON.parse(storedLegendVisibility);
+        } else {
+          priceChartLegendVisibility = {}; // Initialize if not found
+        }
+
+        // Load market cap legend visibility state
+        const storedMarketCapLegendVisibility = localStorage.getItem(
+          "marketTracker_marketCapLegendVisibility_v1"
+        );
+        if (storedMarketCapLegendVisibility) {
+          marketCapLegendVisibility = JSON.parse(
+            storedMarketCapLegendVisibility
+          );
+        } else {
+          marketCapLegendVisibility = {}; // Initialize if not found
+        }
+      }
+    </script>
+  </body>
+</html>
