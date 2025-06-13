@@ -9,3 +9,6 @@ venv/
 .DS_Store
 *.log
 notes.txt
+*.gz
+*.bak
+market_history_backup.json
