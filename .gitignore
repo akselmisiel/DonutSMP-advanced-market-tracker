@@ -8,4 +8,3 @@ env/
 venv/
 .DS_Store
 *.log
-market-history.json
