@@ -8,3 +8,4 @@ env/
 venv/
 .DS_Store
 *.log
+notes.txt
