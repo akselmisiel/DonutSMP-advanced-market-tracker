@@ -23,6 +23,9 @@ A comprehensive web application for tracking and analyzing market transactions o
 - **Interactive Legends**: Toggle chart datasets by clicking legend items
 - **Zoom & Pan**: Mouse wheel zoom and drag-to-pan chart navigation
 - **Transaction Details**: Click chart points to view detailed transaction information
+- **Data Optimization**: Automatic compression and cleanup to reduce file size by ~70%
+- **Smart Deduplication**: Removes duplicate transactions automatically
+- **Auto Cleanup**: Keeps only recent data (14 days) and limits records (150k max)
 
 ## Technology Stack
 

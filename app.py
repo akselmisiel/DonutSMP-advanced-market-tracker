@@ -18,8 +18,8 @@ API_LISTINGS_BASE = "https://api.donutsmp.net/v1/auction/list/"
 API_STATS_BASE = "https://api.donutsmp.net/v1/stats/"
 HISTORY_FILE = "market_history.json"
 COMPRESSED_HISTORY_FILE = "market_history.json.gz"
-MAX_RECORDS = 50000  # Maximum number of records to keep
-DAYS_TO_KEEP = 30    # Keep only last 30 days of data
+MAX_RECORDS = 150000  # Maximum number of records to keep
+DAYS_TO_KEEP = 14     # Keep only last 14 days of data
 
 # --- Data Compression & Optimization Functions ---
 def compress_transaction(tx):
