@@ -5,6 +5,7 @@ A comprehensive web application for tracking and analyzing market transactions o
 ## Features
 
 ### 📊 Market Cap Analysis
+
 - **Price Range Filtering**: Track items within specific price ranges
 - **Market Cap Ranking**: Items sorted by total sales volume
 - **Seller Analysis**: Detailed breakdown of sellers for each item
@@ -12,12 +13,14 @@ A comprehensive web application for tracking and analyzing market transactions o
 - **Interactive Charts**: Click on items to view price history graphs
 
 ### 📈 Price Tracking
+
 - **Individual Item Tracking**: Monitor specific items or shulker box contents
 - **High-Value Sales**: Track transactions above custom price thresholds
 - **Shulker Box Support**: Full tracking of shulker box contents with stack size validation
 - **Historical Data**: Persistent storage of all transaction history
 
 ### 🎯 Advanced Features
+
 - **Real-time Polling**: Automatic updates from DonutSMP API
 - **Blacklist System**: Filter out unwanted items from analysis
 - **Interactive Legends**: Toggle chart datasets by clicking legend items
@@ -38,22 +41,27 @@ A comprehensive web application for tracking and analyzing market transactions o
 ## Installation & Local Development
 
 ### Prerequisites
+
 - Python 3.7+
 - DonutSMP API token
 
 ### Setup
+
 1. Clone the repository:
+
    ```bash
    git clone <your-repo-url>
    cd market-tracker
    ```
 
 2. Install dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
 
 3. Run the application:
+
    ```bash
    python app.py
    ```
@@ -65,6 +73,7 @@ A comprehensive web application for tracking and analyzing market transactions o
 ## Deployment
 
 ### Render.com (Recommended)
+
 1. Push your code to GitHub
 2. Connect your GitHub repository to Render
 3. Set build command: `pip install -r requirements.txt`
@@ -72,6 +81,7 @@ A comprehensive web application for tracking and analyzing market transactions o
 5. Deploy!
 
 ### Other Hosting Options
+
 - **Railway.app**: Auto-detects Python and deploys automatically
 - **Fly.io**: Use `fly launch` and `fly deploy`
 - **Vercel + PythonAnywhere**: Frontend on Vercel, API on PythonAnywhere
@@ -79,11 +89,13 @@ A comprehensive web application for tracking and analyzing market transactions o
 ## Usage Guide
 
 ### Adding Trackers
+
 1. **Item Tracker**: Track individual items or shulker box contents
 2. **Price Tracker**: Monitor high-value sales above a threshold
 3. **Market Cap Tracker**: Analyze items within a price range by market volume
 
 ### Market Cap Analysis
+
 - Items are grouped by identical properties (ID, count, enchantments, trim, contents)
 - Sorted by total sales volume (market cap)
 - Shows total value, unique sellers, and median price
@@ -91,6 +103,7 @@ A comprehensive web application for tracking and analyzing market transactions o
 - Click "Sellers" to see seller breakdown
 
 ### Navigation
+
 - **Tabs**: Switch between different trackers
 - **Time Windows**: Filter data by timeframe
 - **Charts**: Zoom with mouse wheel, pan by dragging
@@ -99,6 +112,7 @@ A comprehensive web application for tracking and analyzing market transactions o
 ## API Integration
 
 The application integrates with the DonutSMP API:
+
 - `/v1/auction/transactions/` - Historical transaction data
 - `/v1/auction/list/` - Active listings (deprecated in this version)
 - `/v1/stats/` - Player statistics
@@ -123,6 +137,7 @@ This project is open source and available under the MIT License.
 ## Support
 
 For issues or questions:
+
 1. Check the console for error messages
 2. Ensure your API token is valid
 3. Verify internet connectivity for API access
